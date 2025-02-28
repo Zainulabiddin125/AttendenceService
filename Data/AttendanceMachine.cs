@@ -13,6 +13,7 @@ namespace AttendenceService.Data
         public string IpAddress { get; set; }
         public int Port { get; set; }
         public bool IsActive { get; set; }
+        public bool IsFetchAll { get; set; }
         public string SerialNumber { get; set; }
         public string Description { get; set; }
         public string DeviceModel { get; set; }

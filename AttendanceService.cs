@@ -1,7 +1,10 @@
-﻿using System;
+﻿using AttendenceService.Data;
+using AttendenceService.Services;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.SqlClient;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -9,8 +12,6 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
-using AttendenceService.Data;
-using AttendenceService.Services;
 namespace AttendenceService
 {
     public partial class AttendanceService : ServiceBase
@@ -34,9 +35,9 @@ namespace AttendenceService
         }
         protected override void OnStart(string[] args)
         {
-            _timer = new Timer(60000); // Run every 60 seconds
+            //_timer = new Timer(1800000); // Run every 30 minutes (1800000 milliseconds)
             //_timer.Elapsed += TimerElapsed;
-            _timer.Start();
+            //_timer.Start();
 
             if (_dbHelper.TestConnection())
             {
@@ -48,7 +49,6 @@ namespace AttendenceService
                 Stop();
                 return;
             }
-
             LogInfo("✅ Service started successfully.");
             TimerElapsed(this, null);
         }
@@ -62,19 +62,35 @@ namespace AttendenceService
             {
                 try
                 {
-                    LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");
-
-                    //if (_zkTecoHelper.Connect(machine.IpAddress, machine.Port))
+                    LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");                 
                     bool isConnected = _zkTecoHelper.Connect(machine.IpAddress, machine.Port);
                     LogInfo($"🔍 Connection result for {machine.IpAddress}: {isConnected}");
                     if (isConnected)
                     {
                         LogInfo($"✅ Successfully connected to {machine.IpAddress}. Fetching records...");
 
+                        List<HRSwapRecord> records;
+                        if (machine.IsFetchAll)
+                        {
+                            // Fetch all records
+                            records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
+                        }
+                        else
+                        {
+                            // Fetch only new records
+                            DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);                          
+                            if (lastInsertedRecordTime.HasValue)
+                            {
+                                records = _zkTecoHelper.GetNewAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString(), lastInsertedRecordTime.Value);
+                            }
+                            else
+                            {
+                                records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
+                            }
+                        }
 
-                        List<HRSwapRecord> records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
+                        //List<HRSwapRecord> records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
                         LogInfo($"📊 Total records fetched from {machine.IpAddress}: {records.Count}");
-
                         if (records.Count > 0)
                         {
                             _dbHelper.InsertAttendanceRecords(machine.Id, records);
@@ -89,10 +105,15 @@ namespace AttendenceService
 
                         _zkTecoHelper.Disconnect();
                     }
-                    else
+                    if (!isConnected)
                     {
+                        LogError($"⚠️ Connection to {machine.IpAddress}:{machine.Port} failed. Possible reasons: \n" +
+                            "1. Device is offline or unreachable.\n" +
+                            "2. Port 4370 is blocked by firewall.\n" +
+                            "3. Another system is already connected to the device.\n" +
+                            "4. SDK connection is not allowed in device settings.\n" +
+                            "5. Network issues.");                       
                         _dbHelper.LogMachineSync(machine.Id, "Failed", 0, "Connection failed.", DateTime.Now, null);
-                        LogError($"❌ Failed: Could not connect to {machine.IpAddress}:{machine.Port}");
                     }
                 }
                 catch (Exception ex)
@@ -102,7 +123,7 @@ namespace AttendenceService
                 }
             }
         }
-
+        
         protected override void OnStop()
         {
             _timer?.Stop();
