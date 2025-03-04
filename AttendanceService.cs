@@ -78,7 +78,8 @@ namespace AttendenceService
                         else
                         {
                             // Fetch only new records
-                            DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);                          
+                            //DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);                          
+                            DateTime? lastInsertedRecordTime = _dbHelper.GetLastAttendanceTimestamp(machine.Id, machine.IpAddress);                          
                             if (lastInsertedRecordTime.HasValue)
                             {
                                 records = _zkTecoHelper.GetNewAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString(), lastInsertedRecordTime.Value);

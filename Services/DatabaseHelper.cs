@@ -130,8 +130,7 @@ namespace AttendenceService.Services
                 using (var cmd = new SqlCommand("SELECT MAX(Swap_Time) FROM HR_Swap_Record WHERE MachineId = @MachineId AND Machine_IP = @IpAddress", conn))
                 {
                     cmd.Parameters.AddWithValue("@MachineId", machineId);
-                    cmd.Parameters.AddWithValue("@IpAddress", ipAddress); // Removed extra @
-
+                    cmd.Parameters.AddWithValue("@IpAddress", ipAddress); 
                     var result = cmd.ExecuteScalar();
                     return result != DBNull.Value ? (DateTime?)result : null;
                 }
