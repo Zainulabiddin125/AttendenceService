@@ -123,8 +123,7 @@ namespace AttendenceService.Services
 
             LogInfo($"[INFO] Successfully retrieved {records.Count} attendance records from machine {machineIP}:{machinePort}.");
             return records;
-        }
-        
+        }        
         /// <summary>
         /// Disconnects from the device.
         /// </summary>
