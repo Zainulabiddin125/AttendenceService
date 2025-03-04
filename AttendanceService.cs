@@ -60,8 +60,10 @@ namespace AttendenceService
 
             foreach (var machine in machines)
             {
+                DateTime fetchStartTime = DateTime.Now;
+                DateTime? fetchEndTime = null;
                 try
-                {
+                {                   
                     LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");                 
                     bool isConnected = _zkTecoHelper.Connect(machine.IpAddress, machine.Port);
                     LogInfo($"🔍 Connection result for {machine.IpAddress}: {isConnected}");
@@ -89,18 +91,18 @@ namespace AttendenceService
                                 records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
                             }
                         }
-
-                        //List<HRSwapRecord> records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
                         LogInfo($"📊 Total records fetched from {machine.IpAddress}: {records.Count}");
                         if (records.Count > 0)
                         {
                             _dbHelper.InsertAttendanceRecords(machine.Id, records);
-                            _dbHelper.LogMachineSync(machine.Id, "Success", records.Count, "Fetched successfully.", DateTime.Now, DateTime.Now);
+                            fetchEndTime = DateTime.Now;
+                            _dbHelper.LogMachineSync(machine.Id,machine.IpAddress, "Success", records.Count, "Fetched successfully.", fetchStartTime, fetchEndTime);
                             LogInfo($"✅ Success: {records.Count} records fetched from {machine.IpAddress}.");
                         }
                         else
                         {
-                            _dbHelper.LogMachineSync(machine.Id, "Success", 0, "No new records found.", DateTime.Now, DateTime.Now);
+                            fetchEndTime = DateTime.Now;
+                            _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Success", 0, "No new records found.", fetchStartTime, fetchEndTime);
                             LogInfo($"✅ Success: No new records found from {machine.IpAddress}.");
                         }
 
@@ -114,12 +116,12 @@ namespace AttendenceService
                             "3. Another system is already connected to the device.\n" +
                             "4. SDK connection is not allowed in device settings.\n" +
                             "5. Network issues.");                       
-                        _dbHelper.LogMachineSync(machine.Id, "Failed", 0, "Connection failed.", DateTime.Now, null);
+                        _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Failed", 0, "Connection failed.", fetchStartTime, null);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _dbHelper.LogMachineSync(machine.Id, "Error", 0, $"Exception: {ex.Message}", DateTime.Now, null);
+                    _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Error", 0, $"Exception: {ex.Message}", fetchStartTime, null);
                     LogError($"❌ Error processing machine {machine.IpAddress}: {ex.Message}");
                 }
             }

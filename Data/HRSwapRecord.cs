@@ -20,7 +20,6 @@ namespace AttendenceService.Data
         public DateTime? LastUpdateDate { get; set; }
         public string MachineIP { get; set; }
         public string MachinePort { get; set; }
-        public int? DeviceLogId { get; set; }
         public int? MachineId { get; set; }
     }
 }

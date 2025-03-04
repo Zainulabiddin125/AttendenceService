@@ -79,8 +79,8 @@ namespace AttendenceService.Services
                     {
                         using (var cmd = new SqlCommand(@"
                     INSERT INTO HR_Swap_Record 
-                    (Emp_No, Swap_Time, Remarks, Creation_Date, Machine_IP, Machine_Port, DeviceLogId, MachineId) 
-                    VALUES (@EmpNo, @SwapTime, @Remarks, @CreationDate, @MachineIP, @MachinePort, @DeviceLogId, @MachineId)", conn))
+                    (Emp_No, Swap_Time, Remarks, Creation_Date, Machine_IP, Machine_Port, MachineId) 
+                    VALUES (@EmpNo, @SwapTime, @Remarks, @CreationDate, @MachineIP, @MachinePort, @MachineId)", conn))
                         {
                             cmd.Parameters.AddWithValue("@EmpNo", record.EmpNo ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@SwapTime", record.SwapTime);
@@ -88,7 +88,6 @@ namespace AttendenceService.Services
                             cmd.Parameters.AddWithValue("@CreationDate", record.CreationDate);
                             cmd.Parameters.AddWithValue("@MachineIP", record.MachineIP);
                             cmd.Parameters.AddWithValue("@MachinePort", record.MachinePort);
-                            cmd.Parameters.AddWithValue("@DeviceLogId", record.DeviceLogId ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@MachineId", record.MachineId);
                             cmd.ExecuteNonQuery();
                         }
@@ -102,16 +101,17 @@ namespace AttendenceService.Services
             }
         }
 
-        public void LogMachineSync(int machineId, string status, int recordsRead, string errorMessage, DateTime startTime, DateTime? endTime)
+        public void LogMachineSync(int machineId, string Machine_IP, string status, int recordsRead, string errorMessage, DateTime startTime, DateTime? endTime)
         {
             using (var conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
                 using (var cmd = new SqlCommand(@"
-                INSERT INTO AttendenceMachineConnectionLogs (MachineId, ConnectionStartTime, ConnectionEndTime, Status, ErrorMessage, RecordsRead) 
-                VALUES (@MachineId, @StartTime, @EndTime, @Status, @ErrorMessage, @RecordsRead)", conn))
+                INSERT INTO AttendenceMachineConnectionLogs (MachineId,Machine_IP,Connection_StartTime,Connection_EndTime, Status, ErrorMessage, RecordsRead) 
+                VALUES (@MachineId,@Machine_IP, @StartTime, @EndTime, @Status, @ErrorMessage, @RecordsRead)", conn))
                 {
                     cmd.Parameters.AddWithValue("@MachineId", machineId);
+                    cmd.Parameters.AddWithValue("@Machine_IP", Machine_IP);
                     cmd.Parameters.AddWithValue("@StartTime", startTime);
                     cmd.Parameters.AddWithValue("@EndTime", endTime ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Status", status);
