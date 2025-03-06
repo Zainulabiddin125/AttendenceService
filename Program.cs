@@ -20,28 +20,40 @@ namespace AttendenceService
         //        new AttendanceService()
         //    };
         //    ServiceBase.Run(ServicesToRun);
-        //}        
+        //}
+
         static void Main(string[] args)
         {
-            if (Environment.UserInteractive)
-            {
-                // Run as a console application
-                AttendanceService service = new AttendanceService();
-                Console.WriteLine("Starting service in console mode...");
-                service.TestStart(args);
-
-                Console.WriteLine("Press ENTER to stop...");
-                Console.ReadLine();
-                service.TestStop();
-            }
-            else
-            {
-                // Run as a Windows service
-                ServiceBase[] ServicesToRun;
-                ServicesToRun = new ServiceBase[] { new AttendanceService() };
-                ServiceBase.Run(ServicesToRun);
-            }
+            var service = new AttendanceService();
+            Console.WriteLine("Service is running");
+            service.TestStart(args); // Start the service logic
+            Console.WriteLine("Press Enter to stop...");
+            Console.ReadLine();
+            service.TestStop(); // Stop the service logic
         }
+
+        //For Development Debuging
+        //static void Main(string[] args)
+        //{
+        //    if (Environment.UserInteractive)
+        //    {
+        //        // Run as a console application
+        //        AttendanceService service = new AttendanceService();
+        //        Console.WriteLine("Starting service in console mode...");
+        //        service.TestStart(args);
+
+        //        Console.WriteLine("Press ENTER to stop...");
+        //        Console.ReadLine();
+        //        service.TestStop();
+        //    }
+        //    else
+        //    {
+        //        // Run as a Windows service
+        //        ServiceBase[] ServicesToRun;
+        //        ServicesToRun = new ServiceBase[] { new AttendanceService() };
+        //        ServiceBase.Run(ServicesToRun);
+        //    }
+        //}
 
     }
 }

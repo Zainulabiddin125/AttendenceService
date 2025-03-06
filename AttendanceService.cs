@@ -35,9 +35,9 @@ namespace AttendenceService
         }
         protected override void OnStart(string[] args)
         {
-            //_timer = new Timer(1800000); // Run every 30 minutes (1800000 milliseconds)
-            //_timer.Elapsed += TimerElapsed;
-            //_timer.Start();
+            _timer = new Timer(1800000); // Run every 30 minutes (1800000 milliseconds)
+            _timer.Elapsed += TimerElapsed;
+            _timer.Start();
 
             if (_dbHelper.TestConnection())
             {
@@ -50,7 +50,7 @@ namespace AttendenceService
                 return;
             }
             LogInfo("✅ Service started successfully.");
-            TimerElapsed(this, null);
+            //TimerElapsed(this, null);
         }
         private void TimerElapsed(object sender, ElapsedEventArgs e)
         {
