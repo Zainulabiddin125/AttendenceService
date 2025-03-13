@@ -141,6 +141,9 @@ namespace AttendenceService.Services
         public List<HRSwapRecord> GetNewAttendanceRecords(int machineId, string ipAddress, string port, DateTime lastTimestamp)
         {
             List<HRSwapRecord> allRecords = GetAttendanceRecords(machineId, ipAddress, port);
+            //for Swap time condition
+            //return allRecords.Where(record => record.SwapTime > lastTimestamp).ToList();
+            //for swap Creation Date condition
             return allRecords.Where(record => record.SwapTime > lastTimestamp).ToList();
         }
         private void LogInfo(string message)

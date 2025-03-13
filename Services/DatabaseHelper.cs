@@ -14,8 +14,8 @@ namespace AttendenceService.Services
 {
     public class DatabaseHelper
     {
-        //private readonly string _connectionString = "Data Source=ROBOT;Initial Catalog=HR;Integrated Security=True;Persist Security Info=True;Encrypt=True;TrustServerCertificate=True;user id=sa;password=123;";
-        private readonly string _connectionString = "Data Source=SRV-ATTENDANCE;Initial Catalog=ServiceHub;Integrated Security=True;Persist Security Info=True;user id=sa;password=123@@;";
+       // private readonly string _connectionString = "Data Source=ROBOT;Initial Catalog=ServiceHub;Integrated Security=True;Persist Security Info=True;Encrypt=True;TrustServerCertificate=True;user id=sa;password=123;";
+        private readonly string _connectionString = "Data Source=SRV-ATTD-01;Initial Catalog=ServiceHub;Integrated Security=True;Persist Security Info=True;user id=sa;password=@Admin;";
         // Method to test database connection
         public bool TestConnection()
         {

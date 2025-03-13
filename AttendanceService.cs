@@ -16,7 +16,7 @@ namespace AttendenceService
 {
     public partial class AttendanceService : ServiceBase
     {
-         private Timer _timer;
+        private Timer _timer;
         private readonly DatabaseHelper _dbHelper = new DatabaseHelper();
         private readonly ZKTecoHelper _zkTecoHelper = new ZKTecoHelper();
         public AttendanceService()
@@ -50,83 +50,90 @@ namespace AttendenceService
                 return;
             }
             LogInfo("✅ Service started successfully.");
-            //TimerElapsed(this, null);
+           // TimerElapsed(this, null);
         }
         private void TimerElapsed(object sender, ElapsedEventArgs e)
         {
-            LogInfo("🔄 Fetching attendance records...");
-
-            var machines = _dbHelper.GetActiveMachines();
-
-            foreach (var machine in machines)
+            try
             {
-                DateTime fetchStartTime = DateTime.Now;
-                DateTime? fetchEndTime = null;
-                try
-                {                   
-                    LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");                 
-                    bool isConnected = _zkTecoHelper.Connect(machine.IpAddress, machine.Port);
-                    LogInfo($"🔍 Connection result for {machine.IpAddress}: {isConnected}");
-                    if (isConnected)
-                    {
-                        LogInfo($"✅ Successfully connected to {machine.IpAddress}. Fetching records...");
+                LogInfo("🔄 Fetching attendance records...");
 
-                        List<HRSwapRecord> records;
-                        if (machine.IsFetchAll)
+                var machines = _dbHelper.GetActiveMachines();
+
+                foreach (var machine in machines)
+                {
+                    DateTime fetchStartTime = DateTime.Now;
+                    DateTime? fetchEndTime = null;
+                    try
+                    {
+                        LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");
+                        bool isConnected = _zkTecoHelper.Connect(machine.IpAddress, machine.Port);
+                        LogInfo($"🔍 Connection result for {machine.IpAddress}: {isConnected}");
+                        if (isConnected)
                         {
-                            // Fetch all records
-                            records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
-                        }
-                        else
-                        {
-                            // Fetch only new records
-                            //DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);                          
-                            DateTime? lastInsertedRecordTime = _dbHelper.GetLastAttendanceTimestamp(machine.Id, machine.IpAddress);                          
-                            if (lastInsertedRecordTime.HasValue)
+                            LogInfo($"✅ Successfully connected to {machine.IpAddress}. Fetching records...");
+
+                            List<HRSwapRecord> records;
+                            if (machine.IsFetchAll)
                             {
-                                records = _zkTecoHelper.GetNewAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString(), lastInsertedRecordTime.Value);
+                                // Fetch all records
+                                records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
                             }
                             else
                             {
-                                records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
+                                // Fetch only new records
+                                DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);                          
+                                //DateTime? lastInsertedRecordTime = _dbHelper.GetLastAttendanceTimestamp(machine.Id, machine.IpAddress);
+                                if (lastInsertedRecordTime.HasValue)
+                                {
+                                    records = _zkTecoHelper.GetNewAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString(), lastInsertedRecordTime.Value);
+                                }
+                                else
+                                {
+                                    records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
+                                }
                             }
-                        }
-                        LogInfo($"📊 Total records fetched from {machine.IpAddress}: {records.Count}");
-                        if (records.Count > 0)
-                        {
-                            _dbHelper.InsertAttendanceRecords(machine.Id, records);
-                            fetchEndTime = DateTime.Now;
-                            _dbHelper.LogMachineSync(machine.Id,machine.IpAddress, "Success", records.Count, "Fetched successfully.", fetchStartTime, fetchEndTime);
-                            LogInfo($"✅ Success: {records.Count} records fetched from {machine.IpAddress}.");
-                        }
-                        else
-                        {
-                            fetchEndTime = DateTime.Now;
-                            _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Success", 0, "No new records found.", fetchStartTime, fetchEndTime);
-                            LogInfo($"✅ Success: No new records found from {machine.IpAddress}.");
-                        }
+                            LogInfo($"📊 Total records fetched from {machine.IpAddress}: {records.Count}");
+                            if (records.Count > 0)
+                            {
+                                _dbHelper.InsertAttendanceRecords(machine.Id, records);
+                                fetchEndTime = DateTime.Now;
+                                _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Success", records.Count, "Fetched successfully.", fetchStartTime, fetchEndTime);
+                                LogInfo($"✅ Success: {records.Count} records fetched from {machine.IpAddress}.");
+                            }
+                            else
+                            {
+                                fetchEndTime = DateTime.Now;
+                                _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Success", 0, "No new records found.", fetchStartTime, fetchEndTime);
+                                LogInfo($"✅ Success: No new records found from {machine.IpAddress}.");
+                            }
 
-                        _zkTecoHelper.Disconnect();
+                            _zkTecoHelper.Disconnect();
+                        }
+                        if (!isConnected)
+                        {
+                            LogError($"⚠️ Connection to {machine.IpAddress}:{machine.Port} failed. Possible reasons: \n" +
+                                "1. Device is offline or unreachable.\n" +
+                                "2. Port 4370 is blocked by firewall.\n" +
+                                "3. Another system is already connected to the device.\n" +
+                                "4. SDK connection is not allowed in device settings.\n" +
+                                "5. Network issues.");
+                            _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Failed", 0, "Connection failed.", fetchStartTime, null);
+                        }
                     }
-                    if (!isConnected)
+                    catch (Exception ex)
                     {
-                        LogError($"⚠️ Connection to {machine.IpAddress}:{machine.Port} failed. Possible reasons: \n" +
-                            "1. Device is offline or unreachable.\n" +
-                            "2. Port 4370 is blocked by firewall.\n" +
-                            "3. Another system is already connected to the device.\n" +
-                            "4. SDK connection is not allowed in device settings.\n" +
-                            "5. Network issues.");                       
-                        _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Failed", 0, "Connection failed.", fetchStartTime, null);
+                        _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Error", 0, $"Exception: {ex.Message}", fetchStartTime, null);
+                        LogError($"❌ Error processing machine {machine.IpAddress}: {ex.Message}");
                     }
-                }
-                catch (Exception ex)
-                {
-                    _dbHelper.LogMachineSync(machine.Id, machine.IpAddress, "Error", 0, $"Exception: {ex.Message}", fetchStartTime, null);
-                    LogError($"❌ Error processing machine {machine.IpAddress}: {ex.Message}");
                 }
             }
+            catch (Exception ex)
+            {
+                LogError($"❌ Unhandled exception in TimerElapsed: {ex.Message}");
+            }
         }
-        
+
         protected override void OnStop()
         {
             _timer?.Stop();
