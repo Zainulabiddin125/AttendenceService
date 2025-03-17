@@ -1,22 +1,16 @@
 ﻿using AttendenceService.Data;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data.SqlClient;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net;
-using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AttendenceService.Services
 {
     public class DatabaseHelper
     {
-       // private readonly string _connectionString = "Data Source=ROBOT;Initial Catalog=ServiceHub;Integrated Security=True;Persist Security Info=True;Encrypt=True;TrustServerCertificate=True;user id=sa;password=123;";
-        private readonly string _connectionString = "Data Source=SRV-ATTD-01;Initial Catalog=ServiceHub;Integrated Security=True;Persist Security Info=True;user id=sa;password=@Admin;";
-        // Method to test database connection
+        private readonly string _connectionString = ConfigurationManager.ConnectionStrings["AttendanceServiceDB"].ConnectionString;
+
         public bool TestConnection()
         {
             try
@@ -24,13 +18,13 @@ namespace AttendenceService.Services
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     conn.Open();
-                    Console.WriteLine("✅ Connection Successful!");
+                    LogInfo("✅ Connection Successful!");
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("❌ Connection Failed: " + ex.Message);
+                LogError("❌ Connection Failed: " + ex.Message);
                 return false;
             }
         }
@@ -74,16 +68,17 @@ namespace AttendenceService.Services
                 conn.Open();
                 foreach (var record in records)
                 {
-                    //LogInfo($"📌 Inserting: MachineID={machineId}, EmpID={record.EmpNo}, Time={record.SwapTime}");
                     try
                     {
                         using (var cmd = new SqlCommand(@"
-                    INSERT INTO HR_Swap_Record 
-                    (Emp_No, Swap_Time, Remarks, Creation_Date, Machine_IP, Machine_Port, MachineId) 
-                    VALUES (@EmpNo, @SwapTime, @Remarks, @CreationDate, @MachineIP, @MachinePort, @MachineId)", conn))
+                            INSERT INTO HR_Swap_Record 
+                            (Emp_No, Swap_Time,Shift_In,Shift_Out, Remarks, Creation_Date, Machine_IP, Machine_Port, MachineId) 
+                            VALUES (@EmpNo, @SwapTime,@ShiftIn,@ShiftOut, @Remarks, @CreationDate, @MachineIP, @MachinePort, @MachineId)", conn))
                         {
                             cmd.Parameters.AddWithValue("@EmpNo", record.EmpNo ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@SwapTime", record.SwapTime);
+                            cmd.Parameters.AddWithValue("@ShiftIn", record.ShiftIn);
+                            cmd.Parameters.AddWithValue("@ShiftOut", record.ShiftOut);
                             cmd.Parameters.AddWithValue("@Remarks", record.Remarks ?? (object)DBNull.Value);
                             cmd.Parameters.AddWithValue("@CreationDate", record.CreationDate);
                             cmd.Parameters.AddWithValue("@MachineIP", record.MachineIP);
@@ -96,7 +91,6 @@ namespace AttendenceService.Services
                     {
                         LogError($"❌ Failed to insert record: {ex.Message}");
                     }
-
                 }
             }
         }
@@ -107,8 +101,9 @@ namespace AttendenceService.Services
             {
                 conn.Open();
                 using (var cmd = new SqlCommand(@"
-                INSERT INTO AttendenceMachineConnectionLogs (MachineId,Machine_IP,Connection_StartTime,Connection_EndTime, Status, ErrorMessage, RecordsRead) 
-                VALUES (@MachineId,@Machine_IP, @StartTime, @EndTime, @Status, @ErrorMessage, @RecordsRead)", conn))
+                    INSERT INTO AttendenceMachineConnectionLogs 
+                    (MachineId, Machine_IP, Connection_StartTime, Connection_EndTime, Status, ErrorMessage, RecordsRead) 
+                    VALUES (@MachineId, @Machine_IP, @StartTime, @EndTime, @Status, @ErrorMessage, @RecordsRead)", conn))
                 {
                     cmd.Parameters.AddWithValue("@MachineId", machineId);
                     cmd.Parameters.AddWithValue("@Machine_IP", Machine_IP);
@@ -121,7 +116,7 @@ namespace AttendenceService.Services
                 }
             }
         }
-          
+
         public DateTime? GetLastAttendanceTimestamp(int machineId, string ipAddress)
         {
             using (var conn = new SqlConnection(_connectionString))
@@ -130,12 +125,13 @@ namespace AttendenceService.Services
                 using (var cmd = new SqlCommand("SELECT MAX(Swap_Time) FROM HR_Swap_Record WHERE MachineId = @MachineId AND Machine_IP = @IpAddress", conn))
                 {
                     cmd.Parameters.AddWithValue("@MachineId", machineId);
-                    cmd.Parameters.AddWithValue("@IpAddress", ipAddress); 
+                    cmd.Parameters.AddWithValue("@IpAddress", ipAddress);
                     var result = cmd.ExecuteScalar();
                     return result != DBNull.Value ? (DateTime?)result : null;
                 }
             }
         }
+
         public DateTime? GetLastRecordCreationTimestamp(int machineId, string ipAddress)
         {
             using (var conn = new SqlConnection(_connectionString))
@@ -150,6 +146,7 @@ namespace AttendenceService.Services
                 }
             }
         }
+
         private void LogInfo(string message)
         {
             try
@@ -158,15 +155,14 @@ namespace AttendenceService.Services
                 using (StreamWriter sw = new StreamWriter(logPath, true))
                 {
                     sw.WriteLine($"{DateTime.Now}: {message}");
-                }                
+                }
             }
             catch (Exception ex)
             {
-                string errorLog = $"❌ Failed to log info: {ex.Message}";
-                Console.WriteLine(errorLog);
-                File.AppendAllText(AppDomain.CurrentDomain.BaseDirectory + "\\LogsFile.txt", $"{DateTime.Now}: {errorLog}\n");
+                Console.WriteLine($"❌ Failed to log info: {ex.Message}");
             }
         }
+
         private void LogError(string message)
         {
             try
@@ -174,7 +170,7 @@ namespace AttendenceService.Services
                 string logPath = AppDomain.CurrentDomain.BaseDirectory + "\\LogsFile.txt";
                 using (StreamWriter sw = new StreamWriter(logPath, true))
                 {
-                    sw.WriteLine($"Error In Attendance Insertion: {message}");
+                    sw.WriteLine($"{DateTime.Now}: ERROR: {message}");
                 }
             }
             catch (Exception ex)

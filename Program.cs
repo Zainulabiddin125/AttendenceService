@@ -11,48 +11,32 @@ namespace AttendenceService
     {
         /// <summary>
         /// The main entry point for the application.
-        /// </summary>
-        //static void Main()
-        //{
-        //    ServiceBase[] ServicesToRun;
-        //    ServicesToRun = new ServiceBase[]
-        //    {
-        //        new AttendanceService()
-        //    };
-        //    ServiceBase.Run(ServicesToRun);
-        //}
+        /// </summary>       
 
-        //static void Main(string[] args)
-        //{
-        //    var service = new AttendanceService();
-        //    Console.WriteLine("Service is running");
-        //    service.TestStart(args); // Start the service logic
-        //    Console.WriteLine("Press Enter to stop...");
-        //    Console.ReadLine();
-        //    service.TestStop(); // Stop the service logic
-        //}
-
-        //For Development Debuging
         static void Main(string[] args)
         {
-            if (Environment.UserInteractive)
-            {
-                // Run as a console application
-                AttendanceService service = new AttendanceService();
-                Console.WriteLine("Starting service in console mode...");
-                service.TestStart(args);
+            //for Development
+            //if (Environment.UserInteractive)
+            //{
+            //    // Run as a console application
+            //    AttendanceService service = new AttendanceService();
+            //    Console.WriteLine("Starting service in console mode...");
+            //    service.TestStart(args);
 
-                Console.WriteLine("Press ENTER to stop...");
-                Console.ReadLine();
-                service.TestStop();
-            }
-            else
-            {
-                // Run as a Windows service
+            //    Console.WriteLine("Press ENTER to stop...");
+            //    Console.ReadLine();
+            //    service.TestStop();
+            //}
+            //else
+            //{
+                // Run in Windows Service mode
                 ServiceBase[] ServicesToRun;
-                ServicesToRun = new ServiceBase[] { new AttendanceService() };
+                ServicesToRun = new ServiceBase[]
+                {
+                 new AttendanceService()
+                };
                 ServiceBase.Run(ServicesToRun);
-            }
+            //}
         }
 
     }

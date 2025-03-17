@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using zkemkeeper;
 
 namespace AttendenceService.Services
@@ -13,9 +11,6 @@ namespace AttendenceService.Services
     {
         private CZKEM zkTecoDevice = new CZKEM();
 
-        /// <summary>
-        /// Connects to the ZKTeco device using the provided IP and port.
-        /// </summary>
         public bool Connect(string ip, int port)
         {
             try
@@ -24,19 +19,15 @@ namespace AttendenceService.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Connection Failed: {ex.Message}");
+                LogError($"[ERROR] Connection Failed: {ex.Message}");
                 return false;
             }
         }
 
-        /// <summary>
-        /// Retrieves attendance records from the device.
-        /// </summary>
-        /// 
         public List<HRSwapRecord> GetAttendanceRecords(int machineId, string machineIP, string machinePort)
         {
             List<HRSwapRecord> records = new List<HRSwapRecord>();
-            Dictionary<string, HRSwapRecord> lastPunches = new Dictionary<string, HRSwapRecord>(); // Stores last punch per user
+            Dictionary<string, HRSwapRecord> lastPunches = new Dictionary<string, HRSwapRecord>();
 
             LogInfo($"[INFO] Attempting to read attendance records from machine {machineIP}:{machinePort}.");
 
@@ -70,37 +61,8 @@ namespace AttendenceService.Services
 
                 DateTime punchTime = new DateTime(dwYear, dwMonth, dwDay, dwHour, dwMinute, dwSecond);
 
-                bool isShiftIn = false;
-                bool isShiftOut = false;
-
-                if (dwInOutMode == 0) // Typically represents IN
-                {
-                    isShiftIn = true;
-                }
-                else if (dwInOutMode == 1) // Typically represents OUT
-                {
-                    isShiftOut = true;
-                }
-                else
-                {
-                    // If the mode is unclear, determine based on last punch record
-                    if (lastPunches.ContainsKey(enrollId))
-                    {
-                        var lastPunch = lastPunches[enrollId];
-                        if (lastPunch.ShiftIn) // If last punch was IN, this must be OUT
-                        {
-                            isShiftOut = true;
-                        }
-                        else
-                        {
-                            isShiftIn = true; // Otherwise, mark it as IN
-                        }
-                    }
-                    else
-                    {
-                        isShiftIn = true; // Default first punch of the day as IN
-                    }
-                }
+                bool isShiftIn = dwInOutMode == 0;
+                bool isShiftOut = dwInOutMode == 1;
 
                 HRSwapRecord newRecord = new HRSwapRecord
                 {
@@ -117,16 +79,12 @@ namespace AttendenceService.Services
 
                 lastPunches[enrollId] = newRecord;
                 records.Add(newRecord);
-
-                //LogInfo($"[INFO] Attendance recorded: EmpNo={enrollId}, Time={punchTime}, ShiftIn={isShiftIn}, ShiftOut={isShiftOut}");
             }
 
-            LogInfo($"[INFO] Successfully retrieved {records.Count} attendance records from machine {machineIP}:{machinePort}.");
+           LogInfo($"[INFO] Successfully retrieved {records.Count} attendance records from machine {machineIP}:{machinePort}.");
             return records;
-        }        
-        /// <summary>
-        /// Disconnects from the device.
-        /// </summary>
+        }
+
         public void Disconnect()
         {
             try
@@ -135,17 +93,16 @@ namespace AttendenceService.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERROR] Disconnection Failed: {ex.Message}");
+                LogError($"[ERROR] Disconnection Failed: {ex.Message}");
             }
         }
+
         public List<HRSwapRecord> GetNewAttendanceRecords(int machineId, string ipAddress, string port, DateTime lastTimestamp)
         {
             List<HRSwapRecord> allRecords = GetAttendanceRecords(machineId, ipAddress, port);
-            //for Swap time condition
-            //return allRecords.Where(record => record.SwapTime > lastTimestamp).ToList();
-            //for swap Creation Date condition
             return allRecords.Where(record => record.SwapTime > lastTimestamp).ToList();
         }
+
         private void LogInfo(string message)
         {
             try
@@ -158,11 +115,10 @@ namespace AttendenceService.Services
             }
             catch (Exception ex)
             {
-                string errorLog = $"❌ Failed to log info: {ex.Message}";
-                Console.WriteLine(errorLog);
-                File.AppendAllText(AppDomain.CurrentDomain.BaseDirectory + "\\LogsFile.txt", $"{DateTime.Now}: {errorLog}\n");
+                Console.WriteLine($"❌ Failed to log info: {ex.Message}");
             }
         }
+
         private void LogError(string message)
         {
             try
@@ -170,7 +126,7 @@ namespace AttendenceService.Services
                 string logPath = AppDomain.CurrentDomain.BaseDirectory + "\\LogsFile.txt";
                 using (StreamWriter sw = new StreamWriter(logPath, true))
                 {
-                    sw.WriteLine($"Error In Attendance Insertion: {message}");
+                    sw.WriteLine($"{DateTime.Now}: ERROR: {message}");
                 }
             }
             catch (Exception ex)

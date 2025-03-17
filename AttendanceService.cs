@@ -2,28 +2,29 @@
 using AttendenceService.Services;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Data.SqlClient;
-using System.Diagnostics;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.ServiceProcess;
-using System.Text;
-using System.Threading.Tasks;
 using System.Timers;
+
 namespace AttendenceService
 {
+    //public partial class AttendanceService : ServiceBase
     public partial class AttendanceService : ServiceBase
     {
         private Timer _timer;
         private readonly DatabaseHelper _dbHelper = new DatabaseHelper();
         private readonly ZKTecoHelper _zkTecoHelper = new ZKTecoHelper();
+        private List<TimeSpan> _runTimes;
+
         public AttendanceService()
         {
-            ServiceName = "AttendanceService"; // Unique name for Windows Service
+            //ServiceName = "AttendanceService"; // Unique name for Windows Service
+            ServiceName = "AttendenceService"; // Unique name for Windows Service
             InitializeComponent();
         }
+
         public void TestStart(string[] args)
         {
             OnStart(args);
@@ -33,26 +34,91 @@ namespace AttendenceService
         {
             OnStop();
         }
+
         protected override void OnStart(string[] args)
         {
-            _timer = new Timer(1800000); // Run every 30 minutes (1800000 milliseconds)
-            _timer.Elapsed += TimerElapsed;
-            _timer.Start();
+            try
+            {
 
-            if (_dbHelper.TestConnection())
-            {
-                LogInfo("✅ Database connection successful.");
+                // Read configuration from App.config
+                int timerInterval = int.Parse(ConfigurationManager.AppSettings["TimerInterval"]);
+                string[] runTimes = ConfigurationManager.AppSettings["RunTimes"].Split(',');
+
+                // Parse run times into TimeSpan objects
+                //_runTimes = runTimes.Select(rt => TimeSpan.Parse(rt)).ToList();
+                // Parse run times
+                _runTimes = runTimes
+                    .Select(rt => TimeSpan.TryParse(rt, out var time) ? time : (TimeSpan?)null)
+                    .Where(t => t.HasValue)
+                    .Select(t => t.Value)
+                    .ToList();
+
+                // Log initial settings
+                LogInfo($"Service started with Timer Interval: {timerInterval} ms");
+                LogInfo($"Run Times: {string.Join(", ", _runTimes)}");
+
+                // Set up the timer
+                _timer = new Timer(timerInterval);
+                _timer.Elapsed += TimerElapsed;
+                _timer.AutoReset = true;
+                _timer.Enabled = true;
+
+                if (Environment.UserInteractive)
+                {
+                    LogInfo("🛠️ Running in development mode. Fetching immediately...");
+                    FetchAndProcessAttendance();
+                }
+                else
+                {
+                    LogInfo("🚀 Running in production mode. Service initialized.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                LogError("❌ Database connection failed. Service cannot proceed.");
+                LogError($"❌ Error during OnStart: {ex.Message}");
                 Stop();
-                return;
             }
-            LogInfo("✅ Service started successfully.");
-           // TimerElapsed(this, null);
         }
+
         private void TimerElapsed(object sender, ElapsedEventArgs e)
+        {
+            try
+            {
+                LogInfo($"🕒 Timer ticked at {DateTime.Now.TimeOfDay}");
+                CheckAndRunService();
+            }
+            catch (Exception ex)
+            {
+                LogError($"❌ Timer execution error: {ex.Message}");
+            }
+        }
+
+        private void CheckAndRunService()
+        {
+            try
+            {
+                TimeSpan now = DateTime.Now.TimeOfDay;
+                LogInfo($"⏰ Current Time: {now}");
+
+                foreach (var runTime in _runTimes)
+                {
+                    LogInfo($"🕒 Scheduled Time: {runTime}, Current Time: {now}");
+                    // Allow a 5-minute window to trigger the task
+                    if (now >= runTime && now < runTime.Add(TimeSpan.FromMinutes(5)))
+                    {
+                        LogInfo($"🔄 Executing Fetch at {runTime}...");
+                        FetchAndProcessAttendance();
+                        return; // Exit to avoid duplicate runs
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"❌ Error in CheckAndRunService: {ex.Message}");
+            }
+        }
+
+        private void FetchAndProcessAttendance()
         {
             try
             {
@@ -82,8 +148,7 @@ namespace AttendenceService
                             else
                             {
                                 // Fetch only new records
-                                DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);                          
-                                //DateTime? lastInsertedRecordTime = _dbHelper.GetLastAttendanceTimestamp(machine.Id, machine.IpAddress);
+                                DateTime? lastInsertedRecordTime = _dbHelper.GetLastRecordCreationTimestamp(machine.Id, machine.IpAddress);
                                 if (lastInsertedRecordTime.HasValue)
                                 {
                                     records = _zkTecoHelper.GetNewAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString(), lastInsertedRecordTime.Value);
@@ -139,6 +204,7 @@ namespace AttendenceService
             _timer?.Stop();
             LogInfo("🛑 Service stopped.");
         }
+
         private void LogInfo(string message)
         {
             try
@@ -148,19 +214,6 @@ namespace AttendenceService
                 {
                     sw.WriteLine($"{DateTime.Now}: {message}");
                 }
-                try
-                {
-                    if (!EventLog.SourceExists(ServiceName))
-                    {
-                        EventLog.CreateEventSource(ServiceName, "Application");
-                    }
-                    EventLog.WriteEntry(ServiceName, message, EventLogEntryType.Information);
-                }
-                catch (Exception evEx)
-                {
-                    string eventError = $"⚠️ Failed to write to Event Log: {evEx.Message}";
-                    File.AppendAllText(logPath, $"{DateTime.Now}: {eventError}\n");
-                }
             }
             catch (Exception ex)
             {
@@ -169,17 +222,21 @@ namespace AttendenceService
                 File.AppendAllText(AppDomain.CurrentDomain.BaseDirectory + "\\LogsFile.txt", $"{DateTime.Now}: {errorLog}\n");
             }
         }
+
         private void LogError(string message)
         {
             try
             {
-                EventLog.WriteEntry(ServiceName, message, EventLogEntryType.Error);
+                string logPath = AppDomain.CurrentDomain.BaseDirectory + "\\LogsFile.txt";
+                using (StreamWriter sw = new StreamWriter(logPath, true))
+                {
+                    sw.WriteLine($"{DateTime.Now}: ERROR: {message}");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Failed to log error: {ex.Message}");
             }
         }
-
     }
 }
