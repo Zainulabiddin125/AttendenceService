@@ -20,7 +20,6 @@ namespace AttendenceService
 
         public AttendanceService()
         {
-            //ServiceName = "AttendanceService"; // Unique name for Windows Service
             ServiceName = "AttendenceService"; // Unique name for Windows Service
             InitializeComponent();
         }
@@ -39,19 +38,11 @@ namespace AttendenceService
         {
             try
             {
-
                 // Read configuration from App.config
                 int timerInterval = int.Parse(ConfigurationManager.AppSettings["TimerInterval"]);
                 string[] runTimes = ConfigurationManager.AppSettings["RunTimes"].Split(',');
-
-                // Parse run times into TimeSpan objects
-                //_runTimes = runTimes.Select(rt => TimeSpan.Parse(rt)).ToList();
                 // Parse run times
-                _runTimes = runTimes
-                    .Select(rt => TimeSpan.TryParse(rt, out var time) ? time : (TimeSpan?)null)
-                    .Where(t => t.HasValue)
-                    .Select(t => t.Value)
-                    .ToList();
+                _runTimes = runTimes.Select(rt => TimeSpan.TryParse(rt, out var time) ? time : (TimeSpan?)null).Where(t => t.HasValue).Select(t => t.Value).ToList();
 
                 // Log initial settings
                 LogInfo($"Service started with Timer Interval: {timerInterval} ms");
@@ -99,12 +90,11 @@ namespace AttendenceService
             {
                 TimeSpan now = DateTime.Now.TimeOfDay;
                 LogInfo($"⏰ Current Time: {now}");
-
                 foreach (var runTime in _runTimes)
                 {
                     LogInfo($"🕒 Scheduled Time: {runTime}, Current Time: {now}");
-                    // Allow a 5-minute window to trigger the task
-                    if (now >= runTime && now < runTime.Add(TimeSpan.FromMinutes(5)))
+                    // Allow a 1-minute window to trigger the task
+                    if (now >= runTime && now < runTime.Add(TimeSpan.FromMinutes(1)))
                     {
                         LogInfo($"🔄 Executing Fetch at {runTime}...");
                         FetchAndProcessAttendance();
