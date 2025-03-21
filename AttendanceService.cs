@@ -45,8 +45,8 @@ namespace AttendenceService
                 _runTimes = runTimes.Select(rt => TimeSpan.TryParse(rt, out var time) ? time : (TimeSpan?)null).Where(t => t.HasValue).Select(t => t.Value).ToList();
 
                 // Log initial settings
-                LogInfo($"Service started with Timer Interval: {timerInterval} ms");
-                LogInfo($"Run Times: {string.Join(", ", _runTimes)}");
+                //LogInfo($"Service started with Timer Interval: {timerInterval} ms");
+                //LogInfo($"Run Times: {string.Join(", ", _runTimes)}");
 
                 // Set up the timer
                 _timer = new Timer(timerInterval);
@@ -54,15 +54,9 @@ namespace AttendenceService
                 _timer.AutoReset = true;
                 _timer.Enabled = true;
 
-                if (Environment.UserInteractive)
-                {
-                    LogInfo("🛠️ Running in development mode. Fetching immediately...");
-                    FetchAndProcessAttendance();
-                }
-                else
-                {
-                    LogInfo("🚀 Running in production mode. Service initialized.");
-                }
+                // Trigger the first fetch immediately
+                LogInfo("🛠️ Running initial fetch...");
+                FetchAndProcessAttendance();
             }
             catch (Exception ex)
             {
@@ -75,7 +69,7 @@ namespace AttendenceService
         {
             try
             {
-                LogInfo($"🕒 Timer ticked at {DateTime.Now.TimeOfDay}");
+                //LogInfo($"🕒 Timer ticked at {DateTime.Now.TimeOfDay}");
                 CheckAndRunService();
             }
             catch (Exception ex)
@@ -89,14 +83,14 @@ namespace AttendenceService
             try
             {
                 TimeSpan now = DateTime.Now.TimeOfDay;
-                LogInfo($"⏰ Current Time: {now}");
+                //LogInfo($"⏰ Current Time: {now}");
                 foreach (var runTime in _runTimes)
                 {
-                    LogInfo($"🕒 Scheduled Time: {runTime}, Current Time: {now}");
-                    // Allow a 1-minute window to trigger the task
+                    //LogInfo($"🕒 Scheduled Time: {runTime}, Current Time: {now}");
+                    //// Allow a 1-minute window to trigger the task
                     if (now >= runTime && now < runTime.Add(TimeSpan.FromMinutes(1)))
                     {
-                        LogInfo($"🔄 Executing Fetch at {runTime}...");
+                        //LogInfo($"🔄 Executing Fetch at {runTime}...");
                         FetchAndProcessAttendance();
                         return; // Exit to avoid duplicate runs
                     }
@@ -112,22 +106,22 @@ namespace AttendenceService
         {
             try
             {
-                LogInfo("🔄 Fetching attendance records...");
+                //LogInfo("🔄 Fetching attendance records...");
 
                 var machines = _dbHelper.GetActiveMachines();
-
+                LogInfo($"📋 Found {machines.Count} active machines.");
                 foreach (var machine in machines)
                 {
                     DateTime fetchStartTime = DateTime.Now;
                     DateTime? fetchEndTime = null;
                     try
                     {
-                        LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");
+                        //LogInfo($"🔌 Connecting to machine {machine.IpAddress}:{machine.Port}...");
                         bool isConnected = _zkTecoHelper.Connect(machine.IpAddress, machine.Port);
-                        LogInfo($"🔍 Connection result for {machine.IpAddress}: {isConnected}");
+                        //LogInfo($"🔍 Connection result for {machine.IpAddress}: {isConnected}");
                         if (isConnected)
                         {
-                            LogInfo($"✅ Successfully connected to {machine.IpAddress}. Fetching records...");
+                            //LogInfo($"✅ Successfully connected to {machine.IpAddress}. Fetching records...");
 
                             List<HRSwapRecord> records;
                             if (machine.IsFetchAll)
@@ -148,7 +142,7 @@ namespace AttendenceService
                                     records = _zkTecoHelper.GetAttendanceRecords(machine.Id, machine.IpAddress, machine.Port.ToString());
                                 }
                             }
-                            LogInfo($"📊 Total records fetched from {machine.IpAddress}: {records.Count}");
+                            //LogInfo($"📊 Total records fetched from {machine.IpAddress}: {records.Count}");
                             if (records.Count > 0)
                             {
                                 _dbHelper.InsertAttendanceRecords(machine.Id, records);

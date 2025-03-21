@@ -18,7 +18,7 @@ namespace AttendenceService
             //for Development
             //if (Environment.UserInteractive)
             //{
-            //    // Run as a console application
+            ////    // Run as a console application
             //    AttendanceService service = new AttendanceService();
             //    Console.WriteLine("Starting service in console mode...");
             //    service.TestStart(args);
@@ -29,7 +29,7 @@ namespace AttendenceService
             //}
             //else
             //{
-                // Run in Windows Service mode
+                //// Run in Windows Service mode
                 ServiceBase[] ServicesToRun;
                 ServicesToRun = new ServiceBase[]
                 {

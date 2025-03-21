@@ -18,7 +18,7 @@ namespace AttendenceService.Services
                 using (var conn = new SqlConnection(_connectionString))
                 {
                     conn.Open();
-                    LogInfo("✅ Connection Successful!");
+                    //LogInfo("✅ Connection Successful!");
                     return true;
                 }
             }
@@ -72,10 +72,11 @@ namespace AttendenceService.Services
                     {
                         using (var cmd = new SqlCommand(@"
                             INSERT INTO HR_Swap_Record 
-                            (Emp_No, Swap_Time,Shift_In,Shift_Out, Remarks, Creation_Date, Machine_IP, Machine_Port, MachineId) 
-                            VALUES (@EmpNo, @SwapTime,@ShiftIn,@ShiftOut, @Remarks, @CreationDate, @MachineIP, @MachinePort, @MachineId)", conn))
+                            (Emp_No,Emp_Name, Swap_Time,Shift_In,Shift_Out, Remarks, Creation_Date, Machine_IP, Machine_Port, MachineId) 
+                            VALUES (@EmpNo,@EmpName, @SwapTime,@ShiftIn,@ShiftOut, @Remarks, @CreationDate, @MachineIP, @MachinePort, @MachineId)", conn))
                         {
                             cmd.Parameters.AddWithValue("@EmpNo", record.EmpNo ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@EmpName", record.EmpName);
                             cmd.Parameters.AddWithValue("@SwapTime", record.SwapTime);
                             cmd.Parameters.AddWithValue("@ShiftIn", record.ShiftIn);
                             cmd.Parameters.AddWithValue("@ShiftOut", record.ShiftOut);

@@ -10,6 +10,7 @@ namespace AttendenceService.Data
     {
         public int PkLineId { get; set; }
         public string EmpNo { get; set; }
+        public string EmpName { get; set; }
         public DateTime? SwapTime { get; set; }
         public bool Manual { get; set; } = false;
         public bool ShiftIn { get; set; } = false;

@@ -38,7 +38,7 @@ namespace AttendenceService.Services
             }
 
             int dwEnrollNumber = 0, dwVerifyMode = 0, dwInOutMode = 0, dwYear = 0, dwMonth = 0, dwDay = 0;
-            int dwHour = 0, dwMinute = 0, dwSecond = 0, dwWorkCode = 0;
+            int dwHour = 0, dwMinute = 0, dwSecond = 0, dwWorkCode = 0;            
 
             while (zkTecoDevice.SSR_GetGeneralLogData(
                 1,
@@ -58,6 +58,16 @@ namespace AttendenceService.Services
                     LogError($"[WARNING] Invalid Employee ID encountered: {enrollId}");
                     continue;
                 }
+                string employeeName = "Unknown";
+                if (zkTecoDevice.SSR_GetUserInfo(1, enrollId, out employeeName, out _, out _, out _))
+                {
+                    //LogInfo($"[INFO] Retrieved Employee Name: {employeeName} for ID: {enrollId}");
+                }
+                //else
+                //{
+                //    LogError($"[ERROR] Failed to retrieve Employee Name for ID: {enrollId}");
+                //}
+
 
                 DateTime punchTime = new DateTime(dwYear, dwMonth, dwDay, dwHour, dwMinute, dwSecond);
 
@@ -67,6 +77,7 @@ namespace AttendenceService.Services
                 HRSwapRecord newRecord = new HRSwapRecord
                 {
                     EmpNo = enrollId,
+                    EmpName = employeeName,
                     SwapTime = punchTime,
                     ShiftIn = isShiftIn,
                     ShiftOut = isShiftOut,
