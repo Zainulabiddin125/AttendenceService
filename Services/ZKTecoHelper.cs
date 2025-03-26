@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using zkemkeeper;
-
 namespace AttendenceService.Services
 {
     public class ZKTecoHelper
@@ -95,7 +94,67 @@ namespace AttendenceService.Services
            LogInfo($"[INFO] Successfully retrieved {records.Count} attendance records from machine {machineIP}:{machinePort}.");
             return records;
         }
+        public List<Employee> GetEmployees(string ip, int port)
+        {
+            List<Employee> employees = new List<Employee>();
+           
+                // Read all employees from the device
+                if (!zkTecoDevice.ReadAllUserID(1))
+                {
+                    LogInfo($"[INFO] No employee records found on the device at IP: {ip}:{port}.");
+                    return employees;
+                }
 
+                while (zkTecoDevice.SSR_GetAllUserInfo(
+                    1,
+                    out string enrollId,
+                    out string employeeName,
+                    out string password,
+                    out int privilege,
+                    out bool enabled))
+                {
+                    employees.Add(new Employee
+                    {
+                        EmpNo = enrollId,
+                        EmpName = employeeName
+                    });
+
+                    LogInfo($"[INFO] Retrieved Employee ID: {enrollId}, Name: {employeeName}");
+                }
+
+                LogInfo($"[INFO] Successfully retrieved {employees.Count} employees from the device at IP: {ip}:{port}.");            
+            return employees;
+        }
+        //public bool UploadEmployee(string ip, int port, string EmpNo,string EmpName)
+        public bool UploadEmployee(Employee employee)
+        {
+            try
+            {
+            bool result = zkTecoDevice.SSR_SetUserInfo(
+               1,
+               employee.EmpNo,
+               employee.EmpName,
+               "", // Password (optional, leave empty if not required)
+               0,  // Privilege level (0 = User, 14 = Admin)
+               true // Enabled status
+                );
+                if (result)
+                {
+                    //LogInfo($"[INFO] Successfully uploaded Employee ID: {employee.EmpNo}, Name: {employee.EmpName} to device at IP: {ip}");
+                    return true;
+                }
+                else
+                {
+                    //LogError($"[ERROR] Failed to upload Employee ID: {employee.EmpNo}, Name: {employee.EmpName} to device at IP: {ip}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                //LogError($"[ERROR] Exception during upload of Employee ID: {employee.EmpNo}, Name: {employee.EmpName}: {ex.Message}");
+                return false;
+            }
+        }
         public void Disconnect()
         {
             try
@@ -112,8 +171,8 @@ namespace AttendenceService.Services
         {
             List<HRSwapRecord> allRecords = GetAttendanceRecords(machineId, ipAddress, port);
             return allRecords.Where(record => record.SwapTime > lastTimestamp).ToList();
-        }
-
+        }        
+        
         private void LogInfo(string message)
         {
             try

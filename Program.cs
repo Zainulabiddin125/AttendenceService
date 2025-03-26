@@ -16,27 +16,27 @@ namespace AttendenceService
         static void Main(string[] args)
         {
             //for Development
-            //if (Environment.UserInteractive)
-            //{
-            ////    // Run as a console application
-            //    AttendanceService service = new AttendanceService();
-            //    Console.WriteLine("Starting service in console mode...");
-            //    service.TestStart(args);
+            if (Environment.UserInteractive)
+            {
+                //    // Run as a console application
+                AttendanceService service = new AttendanceService();
+                Console.WriteLine("Starting service in console mode...");
+                service.TestStart(args);
 
-            //    Console.WriteLine("Press ENTER to stop...");
-            //    Console.ReadLine();
-            //    service.TestStop();
-            //}
-            //else
-            //{
-                //// Run in Windows Service mode
+                Console.WriteLine("Press ENTER to stop...");
+                Console.ReadLine();
+                service.TestStop();
+            }
+            else
+            {
+                // Run in Windows Service mode
                 ServiceBase[] ServicesToRun;
                 ServicesToRun = new ServiceBase[]
                 {
                  new AttendanceService()
                 };
                 ServiceBase.Run(ServicesToRun);
-            //}
+            }
         }
 
     }

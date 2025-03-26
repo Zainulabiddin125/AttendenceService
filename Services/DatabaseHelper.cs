@@ -117,7 +117,33 @@ namespace AttendenceService.Services
                 }
             }
         }
-
+        // Method to insert a record into the Transfer_Record table
+        public void InsertTransferRecord(string empNo, string empName, string sourceMachineIP, string destinationIP,string UserId)
+        {
+            try
+            {
+                using (var conn = new SqlConnection(_connectionString))
+                {
+                    conn.Open();
+                    using (var cmd = new SqlCommand(@"
+                        INSERT INTO Transfer_Record 
+                        (Emp_No, Emp_Name, SourceMachine_IP,DestinationMachine_IP, Created_By, Creation_Date) 
+                        VALUES (@EmpNo, @EmpName, @SourceMachineIP,@DestinationIP, @UserId, GETDATE())", conn))
+                    {
+                        cmd.Parameters.AddWithValue("@EmpNo", empNo);
+                        cmd.Parameters.AddWithValue("@EmpName", empName);
+                        cmd.Parameters.AddWithValue("@SourceMachineIP", sourceMachineIP);
+                        cmd.Parameters.AddWithValue("@DestinationIP", destinationIP);
+                        cmd.Parameters.AddWithValue("@UserId", UserId);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogError($"❌ Failed to insert transfer record: {ex.Message}");
+            }
+        }
         public DateTime? GetLastAttendanceTimestamp(int machineId, string ipAddress)
         {
             using (var conn = new SqlConnection(_connectionString))

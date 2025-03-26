@@ -1,12 +1,16 @@
 ﻿using AttendenceService.Data;
 using AttendenceService.Services;
+//using Serilog.Filters;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.ServiceProcess;
 using System.Timers;
+using zkemkeeper;
+using static AttendenceService.Services.ZKTecoHelper;
 
 namespace AttendenceService
 {
@@ -57,6 +61,11 @@ namespace AttendenceService
                 // Trigger the first fetch immediately
                 LogInfo("🛠️ Running initial fetch...");
                 FetchAndProcessAttendance();
+
+                // Start the HTTP server
+                var httpServer = new HttpServer(this);
+                _ = httpServer.StartAsync();
+                LogInfo("HTTP server started successfully.");
             }
             catch (Exception ex)
             {
@@ -183,6 +192,87 @@ namespace AttendenceService
             }
         }
 
+        // API That fetch employees against specific machine IP 
+        public List<Employee> FetchEmployeesForSpecificIPs(List<string> machineIPs)
+        {
+            var employees = new List<Employee>();
+
+            foreach (var ip in machineIPs)
+            {
+                Console.WriteLine($"Connecting to ZKTeco device at IP: {ip}");
+
+                // Default port for ZKTeco devices
+                int port = 4370;
+
+                if (_zkTecoHelper.Connect(ip, port))
+                {
+                    Console.WriteLine($"Successfully connected to ZKTeco device at IP: {ip}");
+
+                    // Fetch employees from the device
+                    var fetchedEmployees = _zkTecoHelper.GetEmployees(ip, port);
+
+                    employees.AddRange(fetchedEmployees);
+
+                    _zkTecoHelper.Disconnect();
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to connect to ZKTeco device at IP: {ip}");
+                }
+            }
+
+            return employees;
+        }
+        //API for Transfer Employees from 1 machine to another machine
+        public string TransferEmployee(string sourceIP, string destinationIP, string EmpNo, string EmpName,string UserId)
+        {
+            try
+            {
+                int port = 4370;
+                Employee employeeToTransfer = null;
+
+                // Step 1: Fetch employees from the source machine
+                if (!_zkTecoHelper.Connect(sourceIP, port))
+                {
+                    return $"[ERROR] Source machine at IP: {sourceIP} is offline or unavailable.";
+                }
+                // Step 1: Fetch employees from the source machine
+                var employees = _zkTecoHelper.GetEmployees(sourceIP, port);
+                employeeToTransfer = employees.FirstOrDefault(e => e.EmpNo == EmpNo);
+
+                if (employeeToTransfer == null)
+                {
+                    _zkTecoHelper.Disconnect();
+                    return $"[ERROR] Employee ID: {EmpNo}, Name: {EmpName} not found on the source machine at IP: {sourceIP}";
+                }
+
+                _zkTecoHelper.Disconnect();
+
+               // Step 2: Connect to the destination machine
+                if (!_zkTecoHelper.Connect(destinationIP, port))
+                {
+                    return $"[ERROR] Destination machine at IP: {destinationIP} is offline or unavailable.";
+                }
+                // Upload the employee to the destination machine
+                bool uploadSuccess = _zkTecoHelper.UploadEmployee(employeeToTransfer);
+                // Disconnect from the destination machine
+                _zkTecoHelper.Disconnect();
+                if (uploadSuccess)
+                {
+                    // Insert a record into the Transfer_Record table
+                    _dbHelper.InsertTransferRecord(EmpNo, EmpName, sourceIP, destinationIP, UserId);
+                    return $"[SUCCESS] Successfully transferred Employee ID: {EmpNo}, Name: {EmpName} from {sourceIP} to {destinationIP}";
+                }
+                else
+                {
+                    return $"[ERROR] Failed to transfer Employee ID: {EmpNo}, Name: {EmpName} from {sourceIP} to {destinationIP}";
+                }
+            }
+            catch (Exception ex)
+            {
+                return $"[ERROR] Exception during employee transfer: {ex.Message}";
+            }
+        } 
         protected override void OnStop()
         {
             _timer?.Stop();
