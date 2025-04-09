@@ -67,7 +67,6 @@ namespace AttendenceService.Services
                 //    LogError($"[ERROR] Failed to retrieve Employee Name for ID: {enrollId}");
                 //}
 
-
                 DateTime punchTime = new DateTime(dwYear, dwMonth, dwDay, dwHour, dwMinute, dwSecond);
 
                 bool isShiftIn = dwInOutMode == 0;
