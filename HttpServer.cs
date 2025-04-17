@@ -27,63 +27,31 @@ namespace AttendenceService
             listener.Prefixes.Add("http://localhost:5000/api/transfer/");
             listener.Start();
 
-            //Console.WriteLine("Listening for requests at http://localhost:5000/api/employees/ and http://localhost:5000/api/transfer/...");
-
             while (true)
             {
                 var context = await listener.GetContextAsync();
                 _ = HandleRequestAsync(context); // Handle requests asynchronously
             }
         }
-
         private async Task HandleRequestAsync(HttpListenerContext context)
         {
             try
             {
-                //Console.WriteLine($"Received {context.Request.HttpMethod} request at {context.Request.Url.AbsolutePath}");
-
                 if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/api/transfer/")
                 {
                     using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
                     {
                         var json = await reader.ReadToEndAsync();
-
-                        //Console.WriteLine($"Received JSON payload: {json}");
-
-                        var transferRequest = JsonConvert.DeserializeObject<TransferEmployeeRequest>(json);
-
-                        //Console.WriteLine($"Source IP: {transferRequest.SourceIP}, Destination IP: {transferRequest.DestinationIP}, Employee: {transferRequest.EmpNo} - {transferRequest.EmpName}");
-
-                        // Transfer the employee
-                        var result = _attendanceService.TransferEmployee(
-                            transferRequest.SourceIP,
-                            transferRequest.DestinationIP,
-                            transferRequest.EmpNo,
-                            transferRequest.EmpName,
-                            transferRequest.UserId
-                        );
-
-                        // Check if the result contains an error
-                        if (result.Contains("[ERROR]"))
+                        var request = JsonConvert.DeserializeObject<MultipleTransferRequest>(json);
+                        // Perform the transfer
+                        var result = _attendanceService.TransferEmployees(request);
+                        // Return response
+                        context.Response.StatusCode = (int)HttpStatusCode.OK;
+                        context.Response.ContentType = "application/json";
+                        using (var writer = new StreamWriter(context.Response.OutputStream, Encoding.UTF8))
                         {
-                            // Return an error response with an appropriate status code
-                            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                            context.Response.ContentType = "application/json";
-                            using (var writer = new StreamWriter(context.Response.OutputStream, Encoding.UTF8))
-                            {
-                                await writer.WriteAsync(JsonConvert.SerializeObject(new { error = result }));
-                            }
+                            await writer.WriteAsync(JsonConvert.SerializeObject(result));
                         }
-                        else
-                        {
-                            // Return a success response
-                            context.Response.StatusCode = (int)HttpStatusCode.OK;
-                            context.Response.ContentType = "application/json";
-                            using (var writer = new StreamWriter(context.Response.OutputStream, Encoding.UTF8))
-                            {
-                                await writer.WriteAsync(JsonConvert.SerializeObject(new { message = result }));
-                            }
-                        }                       
                     }
                 }
                 else if (context.Request.HttpMethod == "POST" && context.Request.Url.AbsolutePath == "/api/employees/")
@@ -91,14 +59,9 @@ namespace AttendenceService
                     using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
                     {
                         var json = await reader.ReadToEndAsync();
-                        //Console.WriteLine($"Received JSON payload: {json}");
-
                         var machineIPs = JsonConvert.DeserializeObject<List<string>>(json);
-                        //Console.WriteLine($"Deserialized machine IPs: {string.Join(", ", machineIPs)}");
-
                         // Fetch employees for the provided IPs
                         var employees = _attendanceService.FetchEmployeesForSpecificIPs(machineIPs);
-
                         // Send the response back to the client
                         context.Response.StatusCode = (int)HttpStatusCode.OK;
                         context.Response.ContentType = "application/json";
@@ -115,8 +78,6 @@ namespace AttendenceService
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error processing request: {ex}");
-                //Console.WriteLine($"Stack Trace: {ex.StackTrace}");
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 context.Response.ContentType = "application/json";
                 using (var writer = new StreamWriter(context.Response.OutputStream, Encoding.UTF8))
@@ -129,16 +90,25 @@ namespace AttendenceService
                 context.Response.Close();
             }
         }
-
-        // Define the TransferEmployeeRequest model
-        public class TransferEmployeeRequest
+        public class MultipleTransferRequest
         {
             public string SourceIP { get; set; }
-            public string DestinationIP { get; set; }
-            public string EmpNo { get; set; } 
-            public string EmpName { get; set; }
+            public List<string> DestinationIPs { get; set; }
+            public List<EmployeeTransfer> Employees { get; set; }
+            public bool TransferAllEmployees { get; set; }
+            public bool TransferAllMachines { get; set; }
             public string UserId { get; set; }
         }
-       
+        public class EmployeeTransfer
+        {
+            public string EmpNo { get; set; }
+            public string EmpName { get; set; }
+        }
+        public class TransferResult
+        {
+            public int SuccessCount { get; set; }
+            public int FailCount { get; set; }
+            public string Message { get; set; }
+        }        
     }
 }

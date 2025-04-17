@@ -95,8 +95,7 @@ namespace AttendenceService.Services
         }
         public List<Employee> GetEmployees(string ip, int port)
         {
-            List<Employee> employees = new List<Employee>();
-           
+            List<Employee> employees = new List<Employee>();           
                 // Read all employees from the device
                 if (!zkTecoDevice.ReadAllUserID(1))
                 {
@@ -117,11 +116,9 @@ namespace AttendenceService.Services
                         EmpNo = enrollId,
                         EmpName = employeeName
                     });
-
-                    LogInfo($"[INFO] Retrieved Employee ID: {enrollId}, Name: {employeeName}");
+                    //LogInfo($"[INFO] Retrieved Employee ID: {enrollId}, Name: {employeeName}");
                 }
-
-                LogInfo($"[INFO] Successfully retrieved {employees.Count} employees from the device at IP: {ip}:{port}.");            
+                //LogInfo($"[INFO] Successfully retrieved {employees.Count} employees from the device at IP: {ip}:{port}.");            
             return employees;
         }
         //public bool UploadEmployee(string ip, int port, string EmpNo,string EmpName)
@@ -187,7 +184,6 @@ namespace AttendenceService.Services
                 Console.WriteLine($"❌ Failed to log info: {ex.Message}");
             }
         }
-
         private void LogError(string message)
         {
             try

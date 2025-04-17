@@ -38,6 +38,5 @@ namespace AttendenceService
                 ServiceBase.Run(ServicesToRun);
             //}
         }
-
     }
 }
